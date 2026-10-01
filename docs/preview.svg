@@ -1,1 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="614" viewBox="0 0 1020 614"><rect width="100%" height="100%" rx="12" fill="#17151f"/><g fill="#e8e2f0" font-family="monospace" font-size="16" xml:space="preserve"><text x="16" y="24">╭────────────────────────────────────────────────────────────────────────────────────────╮</text><text x="16" y="45">│ cmdlib  / by ai-mate.ai                                                                │</text><text x="16" y="66">│ host: example-machine                                                                  │</text><text x="16" y="87">│ Search: name, command, tags, host…                                                     │</text><text x="16" y="108">│ ────────────────────────────────────────────────────────────────────────────────────── │</text><text x="16" y="129">│ Results (5)                    │ Working Directory                                     │</text><text x="16" y="150">│                                                                                        │</text><text x="16" y="171">│ › Working Directory              pwd  [?]                                             │</text><text x="16" y="192">│   List Files                                                                           │</text><text x="16" y="213">│   UTC Time                       Tags: files · directory                               │</text><text x="16" y="234">│   Git Status                     Host: local   Risk: READ                              │</text><text x="16" y="255">│   Print Hello                    Requires: None recorded                               │</text><text x="16" y="276">│                                                                                        │</text><text x="16" y="297">│                                  Shows the current working directory.                  │</text><text x="16" y="318">│                                                                                        │</text><text x="16" y="339">│                                  Used: 0 times                                         │</text><text x="16" y="360">│                                                                                        │</text><text x="16" y="381">│                                                                                        │</text><text x="16" y="402">│                                                                                        │</text><text x="16" y="423">│                                                                                        │</text><text x="16" y="444">│                                                                                        │</text><text x="16" y="465">│                                                                                        │</text><text x="16" y="486">│                                                                                        │</text><text x="16" y="507">│                                                                                        │</text><text x="16" y="528">│ [Copy] [Run] [Edit]                                                                    │</text><text x="16" y="549">│ / search · ? explain · h tutorial · n new command                                      │</text><text x="16" y="570">│ ↑↓ result  ←→ action  Enter select  / search  ? explain  h help                        │</text><text x="16" y="591">╰────────────────────────────────────────────────────────────────────────────────────────╯</text></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="title desc">
+  <title id="title">cmdlib terminal preview</title>
+  <desc id="desc">Synthetic cmdlib interface showing searchable commands and command details.</desc>
+
+  <rect width="1120" height="650" rx="22" fill="#0d1117"/>
+  <rect x="26" y="26" width="1068" height="598" rx="16" fill="#15121d" stroke="#3a3146" stroke-width="2"/>
+
+  <!-- header -->
+  <text x="54" y="66" fill="#f3eef9" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="19" font-weight="700">cmdlib</text>
+  <text x="126" y="66" fill="#9f93ad" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="16">/ by ai-mate.ai</text>
+  <text x="54" y="92" fill="#81758f" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">host: example-machine</text>
+
+  <!-- search -->
+  <rect x="54" y="112" width="1012" height="44" rx="9" fill="#1d1825" stroke="#493a58"/>
+  <text x="72" y="140" fill="#bfb4cb" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">Search:</text>
+  <text x="142" y="140" fill="#756b80" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">name, command, tags, host…</text>
+
+  <!-- column headers -->
+  <text x="58" y="194" fill="#c9b2e8" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15" font-weight="700">RESULTS</text>
+  <text x="388" y="194" fill="#c9b2e8" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15" font-weight="700">WORKING DIRECTORY</text>
+  <line x1="54" y1="210" x2="1066" y2="210" stroke="#3a3146"/>
+  <line x1="346" y1="180" x2="346" y2="514" stroke="#3a3146"/>
+
+  <!-- left list -->
+  <rect x="54" y="226" width="274" height="42" rx="8" fill="#241b30"/>
+  <rect x="54" y="226" width="4" height="42" rx="2" fill="#9b72cf"/>
+  <text x="74" y="252" fill="#f4eff9" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15" font-weight="700">Working Directory</text>
+
+  <text x="74" y="294" fill="#aaa0b5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">List Files</text>
+  <text x="74" y="330" fill="#aaa0b5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">UTC Time</text>
+  <text x="74" y="366" fill="#aaa0b5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">Git Status</text>
+  <text x="74" y="402" fill="#aaa0b5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">Print Hello</text>
+
+  <!-- right detail -->
+  <text x="388" y="248" fill="#f3eef9" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="18" font-weight="700">pwd</text>
+  <rect x="434" y="228" width="36" height="28" rx="7" fill="#2b2038" stroke="#6d4c8d"/>
+  <text x="444" y="247" fill="#d7bdf7" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14" font-weight="700">?</text>
+
+  <text x="388" y="292" fill="#81758f" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="13">TAGS</text>
+  <text x="438" y="292" fill="#bbb0c5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">files · directory</text>
+
+  <text x="388" y="324" fill="#81758f" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="13">HOST</text>
+  <text x="438" y="324" fill="#bbb0c5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">local</text>
+
+  <text x="548" y="324" fill="#81758f" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="13">RISK</text>
+  <rect x="594" y="305" width="90" height="26" rx="13" fill="#1f2b27" stroke="#3f705e"/>
+  <text x="611" y="323" fill="#9fe0be" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="12" font-weight="700">READ ONLY</text>
+
+  <text x="388" y="370" fill="#cfc5d8" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="15">Shows the current working directory.</text>
+  <text x="388" y="406" fill="#81758f" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="13">USED</text>
+  <text x="430" y="406" fill="#bbb0c5" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">0 times</text>
+
+  <!-- actions -->
+  <line x1="54" y1="514" x2="1066" y2="514" stroke="#3a3146"/>
+  <rect x="388" y="538" width="82" height="34" rx="8" fill="#2a1f36" stroke="#79579a"/>
+  <text x="407" y="560" fill="#d8c6ee" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14" font-weight="700">Copy</text>
+
+  <rect x="482" y="538" width="76" height="34" rx="8" fill="#1b1820" stroke="#4a4153"/>
+  <text x="503" y="560" fill="#b7adbf" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">Run</text>
+
+  <rect x="570" y="538" width="78" height="34" rx="8" fill="#1b1820" stroke="#4a4153"/>
+  <text x="590" y="560" fill="#b7adbf" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="14">Edit</text>
+
+  <!-- footer -->
+  <text x="54" y="596" fill="#71677a" font-family="SFMono-Regular,Consolas,Liberation Mono,monospace" font-size="13">↑↓ result   ←→ action   Enter select   / search   ? explain   h help</text>
+</svg>
