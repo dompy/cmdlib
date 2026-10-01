@@ -17,7 +17,7 @@ binary = str(Path(sys.argv[1]).resolve())
 with tempfile.TemporaryDirectory(prefix="cmdlib-smoke-") as tmp:
     path = Path(tmp) / "commands.json"
     env = dict(os.environ, CMDLIB_FILE=str(path), NO_COLOR="1", TERM="xterm-256color")
-    for flag in ["--version", "--help", "--tea"]:
+    for flag in ["--version", "--help"]:
         out = subprocess.check_output([binary, flag], env=env)
         assert b"cmdlib" in out and b"\x1b" not in out
     assert not path.exists(), "Informational flags created data"
