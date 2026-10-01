@@ -7,10 +7,10 @@ macOS binaries have no Developer ID signature or Apple notarization. The Go arm6
 ad-hoc signature; this is not a publisher identity. Follow your organization's macOS policy.
 Do not disable Gatekeeper globally. Source builds are an alternative.
 
-The user-local installer is `scripts/install.sh`; pass an explicit version such as `v0.1.0`.
-It downloads over HTTPS, verifies SHA-256, runs informational flags on the staged binary, makes private
+The user-local installer is `scripts/install.sh`; pass an explicit version such as `v0.1.1`.
+It downloads over HTTPS, verifies SHA-256, checks the staged binary, makes private
 backups, and atomically replaces `$HOME/.local/bin/cmdlib`. It uses no sudo and edits no shell startup file.
-An existing system-wide binary remains untouched. If `$HOME/.local/bin` precedes it on PATH,
+On success it ends with the small cmdlib installation signature and the command to launch it. An existing system-wide binary remains untouched. If `$HOME/.local/bin` precedes it on PATH,
 the new executable will be selected. Check in a fresh login shell with `command -v cmdlib` and `cmdlib --version`.
 
 Backups are stored in `~/.local/share/cmdlib/backups/<timestamp>-<pid>/` (printed by the installer).
