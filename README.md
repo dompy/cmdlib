@@ -13,8 +13,8 @@ Verify with `shasum -a 256` on macOS or `sha256sum` on Linux, extract, and put `
 For a backed-up, user-local installation, download and inspect the versioned installer:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/dompy/cmdlib/v0.1.0/scripts/install.sh -o /tmp/install-cmdlib.sh
-sh /tmp/install-cmdlib.sh v0.1.0
+curl -fsSL https://raw.githubusercontent.com/dompy/cmdlib/v0.1.1/scripts/install.sh -o /tmp/install-cmdlib.sh
+sh /tmp/install-cmdlib.sh v0.1.1
 cmdlib --version
 cmdlib
 ```
@@ -101,26 +101,6 @@ Export writes to stdout and never executes commands. Commands containing newline
 those as syntax. The skipped count is reported on stderr. Explanations, prerequisites, and usage
 history are not exported. Import is not implemented. Navi has its own execution behavior; cmdlib's
 confirmation does not apply once commands are exported.
-
-## Tea
-
-```sh
-cmdlib --tea
-```
-
-```text
-╭───────────────────────────────────╮
-│                                   │
-│   Go dress cmdlib in Lip Gloss.    │
-│   Serve Bubble Tea with Bubbles.   │
-│                                   │
-│              ready.               │
-│                                   │
-╰───────────────────────────────────╯
-```
-
-The program renders a rounded purple frame in a color terminal. `NO_COLOR` and redirected output
-remain readable without ANSI color codes. `--help`, `--version`, and `--tea` do not load or create a library.
 
 ## Development
 
