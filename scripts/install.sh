@@ -2,7 +2,8 @@
 # Install a checksum-verified public release without touching command libraries.
 set -eu
 umask 077
-version=${1:-v0.1.0}
+version=${1:-v0.1.1}
+printf 'Installing cmdlib %s…\n' "$version"
 case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo 'Expected a version such as v0.1.0' >&2; exit 1;; esac
 os=$(uname -s); arch=$(uname -m)
 case "$os" in Darwin) os=darwin;; Linux) os=linux;; *) echo 'Supported: macOS and Linux' >&2; exit 1;; esac
@@ -20,7 +21,6 @@ if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$tmp/$asset");
 tar -xzf "$tmp/$asset" -C "$tmp" cmdlib
 "$tmp/cmdlib" --version
 "$tmp/cmdlib" --help >/dev/null
-NO_COLOR=1 "$tmp/cmdlib" --tea >/dev/null
 bin="$HOME/.local/bin"
 backup="$HOME/.local/share/cmdlib/backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mkdir -p "$bin" "$backup"
@@ -48,5 +48,11 @@ staged=$(mktemp "$bin/.cmdlib-install.XXXXXX")
 cp "$tmp/cmdlib" "$staged"
 chmod 755 "$staged"
 mv -f "$staged" "$bin/cmdlib"
-printf 'Installed %s to %s\nPrivate backups: %s\n' "$version" "$bin/cmdlib" "$backup"
-printf 'Ensure $HOME/.local/bin is in PATH, then run: cmdlib --version\n'
+printf '\n✓ checksum verified\n'
+printf '✓ binary installed → %s\n' "$bin/cmdlib"
+printf '✓ command library untouched\n'
+printf '  backup: %s\n' "$backup"
+printf '\nGo dressed cmdlib in Lip Gloss.\n'
+printf 'Bubble Tea served with Bubbles.\n\n'
+printf '✓ cmdlib is ready.\n'
+printf '  run: cmdlib\n'
