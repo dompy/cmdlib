@@ -82,7 +82,6 @@ with tempfile.TemporaryDirectory(prefix="cmdlib-smoke-") as tmp:
             wait_for(b"synthetic fixture")
             send(b"\x1b")
             send(b"\x1b[C")
-            send(b"\x1b[C")
             send(b"\r")
             wait_for(b"Execution host:")
             wait_for(b"example-remote-label")

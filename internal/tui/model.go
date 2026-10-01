@@ -23,7 +23,21 @@ import (
 var accent = lipgloss.NewStyle().Foreground(lipgloss.Color("80")).Bold(true)
 var muted = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 var warning = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Bold(true)
-var actions = []string{"Explain", "Copy", "Run", "Edit"}
+
+var explainViolet = lipgloss.AdaptiveColor{Light: "#6D28D9", Dark: "#C4A5F5"}
+var explainBorder = lipgloss.AdaptiveColor{Light: "#A78BCA", Dark: "#8F7AAE"}
+var explainToken = lipgloss.NewStyle().
+	Foreground(lipgloss.AdaptiveColor{Light: "#4C1D95", Dark: "#F5F3FF"}).
+	Background(lipgloss.AdaptiveColor{Light: "#EDE9FE", Dark: "#5B3B74"}).
+	Bold(true).
+	Padding(0, 1)
+var explainTitle = lipgloss.NewStyle().Foreground(explainViolet).Bold(true)
+var explainBox = lipgloss.NewStyle().
+	Border(lipgloss.RoundedBorder()).
+	BorderForeground(explainBorder).
+	Padding(0, 1)
+
+var actions = []string{"Copy", "Run", "Edit"}
 var labels = []string{"Name", "Description", "Command", "Tags (comma separated)", "Host", "Risk: READ / WRITE / DANGER / CONNECT", "Prerequisite", "Explanation"}
 
 type Model struct {
@@ -48,7 +62,7 @@ func New(s storage.Store, cs []library.Command, path string) Model {
 	confirm.Prompt = "> "
 	confirm.CharLimit = 256
 	host, _ := os.Hostname()
-	m := Model{store: s, all: cs, results: search.Filter(cs, ""), path: path, host: host, search: input, confirm: confirm, width: 90, height: 30, detail: viewport.New(50, 18), status: "/ search · ? guided tutorial · n new command"}
+	m := Model{store: s, all: cs, results: search.Filter(cs, ""), path: path, host: host, search: input, confirm: confirm, width: 90, height: 30, detail: viewport.New(50, 18), status: "/ search · ? explain · h tutorial · n new command"}
 	m.refresh()
 	return m
 }
@@ -95,13 +109,122 @@ func (m Model) commandDetails(c library.Command) string {
 	if pre == "" {
 		pre = "None recorded"
 	}
-	return accent.Render(safe(c.Name)) + "\n\n" + safe(c.Command) + "\n\n" + muted.Render("Tags: ") + safe(strings.Join(c.Tags, " · ")) + "\nHost: " + safe(c.Host) + "   Risk: " + riskStyle(c.Risk) + "\nRequires: " + safe(pre) + "\n\n" + safe(c.Description)
+	commandLine := safe(c.Command) + "  " + explainTitle.Render("[?]")
+	return accent.Render(safe(c.Name)) + "\n\n" + commandLine + "\n\n" + muted.Render("Tags: ") + safe(strings.Join(c.Tags, " · ")) + "\nHost: " + safe(c.Host) + "   Risk: " + riskStyle(c.Risk) + "\nRequires: " + safe(pre) + "\n\n" + safe(c.Description)
 }
 func riskStyle(r string) string {
 	if r == "WRITE" || r == "DANGER" {
 		return warning.Render(r)
 	}
 	return accent.Render(r)
+}
+
+type tokenMeaning struct {
+	token   string
+	meaning string
+}
+
+var toolMeanings = map[string]string{
+	"tmutil": "Time Machine utility · macOS",
+	"pwd":    "print working directory · shell",
+	"ls":     "list directory contents · Unix",
+	"date":   "date and time utility · Unix",
+	"git":    "Git version-control tool",
+	"printf": "formatted output utility · shell",
+	"ssh":    "secure shell client",
+	"arp":    "address-resolution table utility",
+}
+
+var argumentMeanings = map[string]map[string]string{
+	"tmutil": {
+		"status": "show current backup state",
+	},
+	"ls": {
+		"-l":   "long listing",
+		"-a":   "include hidden entries",
+		"-h":   "human-readable sizes",
+		"-lah": "long listing · hidden entries · readable sizes",
+	},
+	"date": {
+		"-u": "use UTC",
+	},
+	"git": {
+		"status":  "show working tree status",
+		"--short": "use compact output",
+	},
+}
+
+func commandBase(token string) string {
+	if i := strings.LastIndex(token, "/"); i >= 0 {
+		return token[i+1:]
+	}
+	return token
+}
+
+func meaningsFor(c library.Command) []tokenMeaning {
+	fields := strings.Fields(c.Command)
+	if len(fields) == 0 {
+		return nil
+	}
+	base := commandBase(fields[0])
+	var out []tokenMeaning
+	if meaning, ok := toolMeanings[base]; ok {
+		out = append(out, tokenMeaning{token: base, meaning: meaning})
+	}
+	for _, token := range fields[1:] {
+		if meaning, ok := argumentMeanings[base][token]; ok {
+			out = append(out, tokenMeaning{token: token, meaning: meaning})
+		}
+	}
+	return out
+}
+
+func explanationRiskLabel(risk string) string {
+	switch risk {
+	case "READ":
+		return "READ ONLY"
+	case "CONNECT":
+		return "CONNECTS"
+	case "WRITE":
+		return "WRITES"
+	case "DANGER":
+		return "DANGER"
+	default:
+		return risk
+	}
+}
+
+func (m Model) explanationPopover(c library.Command) string {
+	var lines []string
+	if summary := strings.TrimSpace(c.Description); summary != "" {
+		lines = append(lines, safe(summary))
+	}
+
+	meanings := meaningsFor(c)
+	if len(meanings) > 0 {
+		if len(lines) > 0 {
+			lines = append(lines, "")
+		}
+		for _, item := range meanings {
+			lines = append(lines, explainToken.Render(safe(item.token))+muted.Render("  →  ")+safe(item.meaning))
+		}
+	} else if explanation := strings.TrimSpace(c.Explanation); explanation != "" {
+		if len(lines) > 0 && explanation != strings.TrimSpace(c.Description) {
+			lines = append(lines, "")
+		}
+		if explanation != strings.TrimSpace(c.Description) {
+			lines = append(lines, safe(explanation))
+		}
+	}
+
+	if len(lines) == 0 {
+		lines = append(lines, muted.Render("No explanation recorded."))
+	}
+	lines = append(lines, "", explainTitle.Render(explanationRiskLabel(c.Risk)))
+
+	content := explainTitle.Render("what it is") + "\n\n" + strings.Join(lines, "\n")
+	width := max(24, min(m.detail.Width-2, 64))
+	return explainBox.Width(width).Render(content)
 }
 func (m Model) content() string {
 	c, ok := m.current()
@@ -111,7 +234,7 @@ func (m Model) content() string {
 	}
 	if m.mode == "help" {
 		c = m.all[m.step]
-		return fmt.Sprintf("Tutorial %d/%d · ←/→ command · e Explain · c Copy · r Run · Esc back\n\n", m.step+1, len(m.all)) + m.commandDetails(c) + "\n\n" + safe(c.Explanation) + "\n\nActions refer to the command above: Explain describes it; Copy copies its exact text; Run opens a confirmation.\n\nLibrary controls: / search; ↑/↓ results; ←/→ actions; Enter activate; Tab details/explanation; PgUp/PgDown scroll; n new; ? tutorial; q quit.\n\nSearch accepts multiple words and fuzzy abbreviations. Esc leaves search before q can quit. Risk and prerequisites are user-maintained labels, not a security check. Commands run locally via /bin/sh.\n\nLibrary: " + safe(m.path)
+		return fmt.Sprintf("Tutorial %d/%d · ←/→ command · ? explain · c Copy · r Run · Esc back\n\n", m.step+1, len(m.all)) + m.commandDetails(c) + "\n\n" + safe(c.Explanation) + "\n\nActions refer to the command above: ? explains it; Copy copies its exact text; Run opens a confirmation.\n\nLibrary controls: / search; ↑/↓ results; ←/→ actions; Enter activate; PgUp/PgDown scroll; n new; ? explain; h tutorial; q quit.\n\nSearch accepts multiple words and fuzzy abbreviations. Esc leaves search before q can quit. Risk and prerequisites are user-maintained labels, not a security check. Commands run locally via /bin/sh.\n\nLibrary: " + safe(m.path)
 	}
 	if !ok {
 		return "No matching commands.\n\nPress / to change search or n to add a command."
@@ -119,11 +242,7 @@ func (m Model) content() string {
 	body := m.commandDetails(c)
 	switch m.mode {
 	case "explain":
-		explanation := c.Explanation
-		if explanation == "" {
-			explanation = "No explanation recorded. Edit this entry to document significant arguments and side effects. cmdlib cannot infer whether an arbitrary shell command changes anything."
-		}
-		return body + "\n\n" + accent.Render("Explanation") + "\n" + safe(explanation) + "\n\nEsc back"
+		return body + "\n\n" + m.explanationPopover(c) + "\n\n" + muted.Render("? / Esc close")
 	case "copy":
 		return body + "\n\nClipboard unavailable. Select and copy the raw command above, or save the JSON/export locally. Nothing was executed.\n\nEsc back"
 	case "run":
@@ -242,20 +361,22 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 				m.detail.GotoTop()
 				m.layout()
 				return m, nil
-			case "e", "c", "r":
+			case "?", "c", "r":
 				m.target = m.all[m.step]
 				m.returnMode = "help"
-				a := 0
-				if key == "c" {
-					a = 1
+				if key == "?" {
+					m.mode = "explain"
+					m.layout()
+					return m, nil
 				}
+				a := 0
 				if key == "r" {
-					a = 2
+					a = 1
 				}
 				return m.activate(a)
 			}
 		} else if m.mode != "" {
-			if key == "esc" || key == "q" || key == "tab" {
+			if key == "esc" || key == "q" || (m.mode == "explain" && key == "?") {
 				m.mode = m.returnMode
 				m.layout()
 				return m, nil
@@ -304,12 +425,20 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 				m.layout()
 				return m, nil
 			case "left":
-				m.action = (m.action + 3) % 4
+				m.action = (m.action + len(actions) - 1) % len(actions)
 				return m, nil
 			case "right":
-				m.action = (m.action + 1) % 4
+				m.action = (m.action + 1) % len(actions)
 				return m, nil
 			case "?":
+				if c, ok := m.current(); ok {
+					m.target = c
+					m.returnMode = ""
+					m.mode = "explain"
+					m.layout()
+				}
+				return m, nil
+			case "h":
 				if len(m.all) > 0 {
 					m.mode = "help"
 					m.step = 0
@@ -320,15 +449,11 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 				m.target = library.Command{ID: fmt.Sprintf("cmd-%d", time.Now().UnixNano()), Risk: "READ", Host: m.host}
 				m.beginEdit()
 				return m, textinput.Blink
-			case "enter", "tab":
+			case "enter":
 				if c, ok := m.current(); ok {
 					m.target = c
 					m.returnMode = ""
-					a := m.action
-					if key == "tab" {
-						a = 0
-					}
-					return m.activate(a)
+					return m.activate(m.action)
 				}
 			}
 		}
@@ -356,8 +481,6 @@ func (m Model) activate(a int) (tea.Model, tea.Cmd) {
 	m.detail.GotoTop()
 	switch a {
 	case 0:
-		m.mode = "explain"
-	case 1:
 		raw := m.target.Command
 		return m, func() tea.Msg {
 			name := ""
@@ -379,14 +502,14 @@ func (m Model) activate(a int) (tea.Model, tea.Cmd) {
 			cmd.Stdin = strings.NewReader(raw)
 			return copied{cmd.Run()}
 		}
-	case 2:
+	case 1:
 		m.mode = "run"
 		m.confirm.SetValue("")
 		m.status = "Type " + confirmation(m.target) + " to run · PgUp/PgDown review · Esc cancel"
 		m.layout()
 		cmd := m.confirm.Focus()
 		return m, cmd
-	case 3:
+	case 2:
 		m.beginEdit()
 		return m, textinput.Blink
 	}
@@ -534,15 +657,18 @@ func (m Model) View() string {
 		actionLine = m.confirm.View()
 	}
 	if m.mode == "help" {
-		actionLine = "←/→ tutorial step · e Explain · c Copy · r Run"
+		actionLine = "←/→ tutorial step · ? explain · c Copy · r Run"
 	}
 	if m.mode == "edit" {
 		actionLine = "Tab next field · Shift+Tab previous"
 	}
-	if m.mode == "explain" || m.mode == "copy" {
+	if m.mode == "explain" {
+		actionLine = "? / Esc close · PgUp/PgDown scroll"
+	}
+	if m.mode == "copy" {
 		actionLine = "Esc back · PgUp/PgDown scroll"
 	}
-	footer := muted.Render("↑↓ result  ←→ action  Enter select  / search  ? help")
+	footer := muted.Render("↑↓ result  ←→ action  Enter select  / search  ? explain  h help")
 	content := header + "\n" + m.search.View() + "\n" + strings.Repeat("─", w) + "\n" + body + "\n" + actionLine + "\n" + lipgloss.NewStyle().MaxWidth(w).Render(safe(m.status)) + "\n" + footer
 	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("238")).Padding(0, 1).Width(w + 2).MaxWidth(m.width).MaxHeight(m.height).Render(content)
 }

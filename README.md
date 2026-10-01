@@ -47,18 +47,18 @@ The selected command and details stay visible in the wide terminal layout.
 | --- | --- |
 | `/` | Focus search; normal typing and pasted text work |
 | `↑` / `↓` | Select a result |
-| `←` / `→` | Select Explain / Copy / Run / Edit |
+| `←` / `→` | Select Copy / Run / Edit |
 | `Enter` | Activate the selected action |
-| `Tab` | Open the selected command's explanation |
+| `?` | Toggle the selected command's contextual explanation |
 | `PgUp` / `PgDown` | Scroll details |
 | `n` | Add a command |
-| `?` | Guided tutorial, one visible command per step |
+| `h` | Guided tutorial, one visible command per step |
 | `Esc` | Leave search, clear search, or cancel the active view |
 | `q` / `Ctrl+C` | Quit (`q` is normal text while searching) |
 
 In the editor, use Tab / Shift+Tab to select a field, Ctrl+S to save, and Esc to cancel.
 Changing command text clears an unchanged explanation so stale documentation does not silently remain.
-Tutorial controls are ←/→ for steps, `e` Explain, `c` Copy, and `r` Run.
+Tutorial controls are ←/→ for steps, `?` for contextual explanation, `c` Copy, and `r` Run.
 
 Selection and copying never execute a command. Run shows the actual local execution machine and
 exact command before confirmation. Type `yes` for READ / CONNECT, `WRITE` for WRITE,
@@ -69,7 +69,7 @@ Confirmed run attempts are recorded before execution; the count includes failed 
 
 Copy uses `pbcopy` on macOS, `wl-copy` on Wayland, or `xclip` on X11.
 Without a working clipboard, the exact command is shown for manual copying.
-Explain displays stored text; no AI service or network connection is involved.
+`?` opens a compact local explanation beside the selected command. Known command tokens get concise built-in hints; stored explanation text remains the fallback. No AI service or network connection is involved.
 
 ## Data and privacy
 

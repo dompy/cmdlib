@@ -31,7 +31,7 @@ func TestRunConfirmation(t *testing.T) {
 		cs[0].Risk = risk
 		s := &memory{cs: cs}
 		m := New(s, cs, "")
-		m.action = 2
+		m.action = 1
 		m = key(m, tea.KeyEnter)
 		if m.mode != "run" || !m.confirm.Focused() || s.saves != 0 {
 			t.Fatal("selection executed")
@@ -109,7 +109,7 @@ func TestCancelRunAndHost(t *testing.T) {
 	s := &memory{cs: cs}
 	m := New(s, cs, "")
 	m.host = "actual-machine"
-	m.action = 2
+	m.action = 1
 	m = key(m, tea.KeyEnter)
 	v := m.content()
 	for _, want := range []string{"Execution host: actual-machine", "Host: example-remote-label", cs[0].Command, "Host labels do not route execution"} {
@@ -123,6 +123,68 @@ func TestCancelRunAndHost(t *testing.T) {
 		t.Fatal("cancel changed library")
 	}
 }
+func TestContextualExplain(t *testing.T) {
+	cs := []library.Command{{
+		ID:          "tm-status",
+		Name:        "Time Machine Status",
+		Command:     "tmutil status",
+		Description: "Shows the current Time Machine backup status.",
+		Explanation: "Fallback explanation.",
+		Host:        "Mac",
+		Risk:        "READ",
+	}}
+	m := New(&memory{}, cs, "")
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")})
+	m = next.(Model)
+	if m.mode != "explain" {
+		t.Fatal("question mark did not open explanation")
+	}
+	view := m.content()
+	for _, want := range []string{"what it is", "tmutil", "Time Machine utility · macOS", "status", "show current backup state", "READ ONLY"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("explanation missing %q", want)
+		}
+	}
+	m = key(m, tea.KeyEsc)
+	if m.mode != "" {
+		t.Fatal("escape did not close explanation")
+	}
+	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
+	m = next.(Model)
+	if m.mode != "help" {
+		t.Fatal("h did not open help")
+	}
+}
+
+func TestExplanationFallback(t *testing.T) {
+	cs := []library.Command{{
+		ID:          "mystery",
+		Name:        "Mystery",
+		Command:     "mystery --foo",
+		Description: "Runs a custom local command.",
+		Explanation: "Stored explanation stays available when token meanings are unknown.",
+		Host:        "local",
+		Risk:        "READ",
+	}}
+	m := New(&memory{}, cs, "")
+	m.target = cs[0]
+	m.mode = "explain"
+	m.layout()
+	view := m.content()
+	if !strings.Contains(view, "Stored explanation stays available") {
+		t.Fatal("stored explanation fallback missing")
+	}
+	if !strings.Contains(view, "READ ONLY") {
+		t.Fatal("risk label missing")
+	}
+}
+
+func TestPrimaryActions(t *testing.T) {
+	if got := strings.Join(actions, ","); got != "Copy,Run,Edit" {
+		t.Fatalf("actions = %q", got)
+	}
+}
+
 func TestPasteAndTutorial(t *testing.T) {
 	cs := library.Seeds()
 	m := New(&memory{}, cs, "")
