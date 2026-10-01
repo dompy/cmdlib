@@ -4,10 +4,6 @@ A small, offline terminal command library for commands you use too rarely to rem
 Find a command, read its explanation, copy its exact text, or deliberately run it.
 Built with Go, Bubble Tea, Bubbles, and Lip Gloss. [ai-mate.ai](https://ai-mate.ai) is the project attribution.
 
-![cmdlib terminal view with synthetic commands](docs/preview.svg)
-
-The preview is captured from the actual TUI view using generic examples and a synthetic host.
-
 ## Install
 
 Download the matching archive and `checksums.txt` from [Releases](https://github.com/dompy/cmdlib/releases).
