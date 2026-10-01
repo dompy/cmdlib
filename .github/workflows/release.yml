@@ -1,0 +1,61 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  build:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build archives from tagged source
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          scripts/build-release.sh "$RELEASE_VERSION"
+          (cd dist && sha256sum -c checksums.txt)
+          mkdir "$RUNNER_TEMP/unpacked"
+          tar -xzf "dist/cmdlib_${RELEASE_VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP/unpacked"
+          python3 scripts/smoke.py "$RUNNER_TEMP/unpacked/cmdlib"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-assets
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-assets
+          path: dist
+      - name: Verify and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          (cd dist && sha256sum -c checksums.txt)
+          gh release create "$RELEASE_VERSION" dist/* --verify-tag --draft --title "cmdlib $RELEASE_VERSION — by ai-mate.ai" --notes-file docs/release-notes.md
+          gh release edit "$RELEASE_VERSION" --draft=false

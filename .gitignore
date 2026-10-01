@@ -1,0 +1,11 @@
+/cmdlib
+/cmdlib-*
+/dist/
+/.private*/
+/commands.json
+*.cheat
+*.log
+*.bak
+.env
+.env.*
+.DS_Store
