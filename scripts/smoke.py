@@ -40,32 +40,46 @@ with tempfile.TemporaryDirectory(prefix="cmdlib-smoke-") as tmp:
         os.close(slave)
         captured = bytearray()
 
+        def pump(timeout):
+            if select.select([master], [], [], timeout)[0]:
+                try:
+                    chunk = os.read(master, 65536)
+                except OSError:
+                    return False
+                if not chunk:
+                    return False
+                captured.extend(chunk)
+                if b"\x1b]11;?" in chunk:
+                    os.write(master, b"\x1b]11;rgb:0000/0000/0000\x07")
+                if b"\x1b[6n" in chunk:
+                    os.write(master, b"\x1b[1;1R")
+            return True
+
         def wait_for(needle, timeout=12):
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
                 if needle in captured:
                     return
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        chunk = os.read(master, 65536)
-                    except OSError:
-                        break
-                    captured.extend(chunk)
-                    if b"\x1b]11;?" in chunk:
-                        os.write(master, b"\x1b]11;rgb:0000/0000/0000\x07")
-                    if b"\x1b[6n" in chunk:
-                        os.write(master, b"\x1b[1;1R")
+                if not pump(0.1):
+                    break
+            # This terminal contains only the synthetic fixture and runner metadata.
+            print("Synthetic terminal tail:", repr(bytes(captured[-4096:])), file=sys.stderr)
             raise AssertionError("TUI did not show " + needle.decode())
 
         def send(keys):
             os.write(master, keys)
-            time.sleep(0.2)
+            # Drain output while the application handles input. macOS PTYs have
+            # small buffers; sleeping here can block a render and merge keys.
+            deadline = time.monotonic() + 0.2
+            while time.monotonic() < deadline:
+                if not pump(min(0.05, deadline - time.monotonic())):
+                    break
 
         try:
             wait_for(b"Synthetic Fixture")
             send(b"/")
-            send(b"\x1b[200~fixture\x1b[201~")
-            wait_for(b"fixture")
+            send(b"\x1b[200~synthetic fixture\x1b[201~")
+            wait_for(b"synthetic fixture")
             send(b"\x1b")
             send(b"\x1b[C")
             send(b"\x1b[C")
