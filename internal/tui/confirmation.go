@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -88,22 +87,10 @@ func (m Model) beginConfirmation() (tea.Model, tea.Cmd) {
 	m.runDeadline = time.Time{}
 	m.runFingerprint = commandFingerprint(m.target)
 	m.confirm.SetValue("")
-	m.status = "Type " + confirmation(m.target) + " to run · Esc cancels"
-	if quickConfirmation(m.target) {
-		m.status = "Enter / Space / y / 1: start · Esc / n / 0 / Backspace / Del: cancel"
-	}
+	m.status = ""
 	m.layout()
 	focus := m.confirm.Focus()
-	if approvedCountdown(m.path, m.target) {
-		// The review must fit on screen; never count down behind a clipped command.
-		if m.width < 60 || m.height < 18 || m.detail.TotalLineCount() > m.detail.Height {
-			m.status = "Auto-start paused: enlarge/review the command, then confirm explicitly."
-			return m, focus
-		}
-		m.runDeadline = time.Now().Add(confirmationDelay)
-		m.status = "Start in 2.5s · Enter / Space / y / 1: now · Esc / n / 0 / Backspace / Del: cancel"
-		return m, tea.Batch(focus, countdownTick(m.runGeneration))
-	}
+
 	return m, focus
 }
 
@@ -163,29 +150,11 @@ func (m Model) confirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) confirmTick(t confirmationTick) (tea.Model, tea.Cmd) {
-	if m.mode != "run" || m.runDeadline.IsZero() || t.generation != m.runGeneration {
-		return m, nil
-	}
-	// Sleep/suspend/backlog must not cause a surprise execution upon returning.
-	if t.at.After(m.runDeadline.Add(500 * time.Millisecond)) {
-		m.pauseCountdown("Countdown paused after a delay; confirm explicitly.")
-		return m, nil
-	}
-	remaining := m.runDeadline.Sub(t.at)
-	if remaining <= 0 {
-		if !approvedCountdown(m.path, m.target) {
-			m.pauseCountdown("Auto-start approval changed; confirm explicitly.")
-			return m, nil
-		}
-		return m.executeConfirmed(true)
-	}
-	m.status = fmt.Sprintf("Start in %.1fs · Enter / Space / y / 1: now · Esc / n / 0 / Backspace / Del: cancel", remaining.Seconds())
-	return m, countdownTick(m.runGeneration)
-}
+// Ignore timers from the previous UI: every run now requires a fresh keypress.
+func (m Model) confirmTick(t confirmationTick) (tea.Model, tea.Cmd) { return m, nil }
 
 func (m Model) executeConfirmed(automatic bool) (tea.Model, tea.Cmd) {
-	if m.mode != "run" || commandFingerprint(m.target) != m.runFingerprint {
+	if automatic || m.mode != "run" || commandFingerprint(m.target) != m.runFingerprint {
 		return m, nil
 	}
 	m.runGeneration++

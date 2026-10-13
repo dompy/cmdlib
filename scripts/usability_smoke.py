@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix="cmdlib-ux-smoke-") as temporary:
         assert json.loads(Path(str(library)+".view-state.json").read_text())["FFmpeg"]
         send(b"\x1b[B")
         send(b"d")
-        wait(b"DELETE")
+        wait(b"Delete this command")
         send(b"\r")
         assert [r["id"] for r in json.loads(library.read_text())] == [commands[0]["id"], commands[2]["id"]]
         assert list((directory / "backups").glob("*.bak"))

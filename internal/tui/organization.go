@@ -128,7 +128,7 @@ func (m Model) beginRenameCategory(name string) (tea.Model, tea.Cmd) {
 	m.renameCategory.Placeholder = "z. B. Audio & Aufnahme"
 	m.renameCategory.CharLimit = 80
 	cmd := m.renameCategory.Focus()
-	m.status = "Neuen Namen eingeben · Enter speichert · Esc bricht ab"
+	m.status = ""
 	m.detail.GotoTop()
 	m.layout()
 	return m, cmd
@@ -141,9 +141,8 @@ func (m Model) renameCategoryContent() string {
 			count++
 		}
 	}
-	return accent.Render("Kategorie umbenennen") + "\n\nAktuell: " + safe(m.renameOriginal) +
-		fmt.Sprintf("\n%d Commands in dieser Kategorie\n\n", count) + m.renameCategory.View() +
-		"\n\nDer neue Name gilt für die ganze Kategorie.\nEnter speichert · Esc bricht ab · u macht es danach rückgängig."
+	return accent.Render("Kategorie umbenennen") + "\n\n" + safe(m.renameOriginal) +
+		fmt.Sprintf(" · %d commands\n\n", count) + m.renameCategory.View()
 }
 
 func (m Model) updateRenameCategory(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -221,7 +220,7 @@ func (m *Model) beginMove() {
 	m.moveCategory.SetValue(m.target.Category)
 	m.moveCategory.CharLimit = 80
 	m.moveCategory.Width = max(10, m.detail.Width-14)
-	m.status = "↑↓ move · Tab category · Enter save · Esc cancel"
+	m.status = ""
 	m.layout()
 }
 
@@ -250,7 +249,7 @@ func (m Model) moveContent() string {
 		}
 		lines = append(lines, name)
 	}
-	lines = append(lines, "", m.moveCategory.View(), "", "↑↓ changes position in the saved library.\nTab edits the category; leave it empty for the main list.\nCategory children follow the same saved order.\nNothing changes until Enter. Esc cancels; u undoes a saved move.")
+	lines = append(lines, "", m.moveCategory.View())
 	return strings.Join(lines, "\n")
 }
 

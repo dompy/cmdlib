@@ -162,6 +162,9 @@ func TestCategoryEditorAndEmptyLibraryDeleteUndo(t *testing.T) {
 	cs := library.Seeds()[:1]
 	s := &memory{cs: cs}
 	m := New(s, cs, "")
+	m.layer = 2
+	m.detailField = 8
+	m.fieldFocus = true
 	m = typedKey(m, "e")
 	if len(m.fields) != len(labels) || len(m.fields) != 9 {
 		t.Fatal("category editor field missing")

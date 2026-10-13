@@ -1,0 +1,30 @@
+  cmdlib
+
+  › Working Directory                pwd
+    List Files
+    UTC Time
+    Git Status
+    Print Hello
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Run · Enter · ←/→ action · Tab fields · / search · h help

@@ -66,8 +66,8 @@ func TestQuickCancellationKeys(t *testing.T) {
 			m, s := quickFixture(t, "CONNECT", true)
 			old := m.runGeneration
 			deadline := m.runDeadline
-			if deadline.IsZero() {
-				t.Fatal("fixture timer not armed")
+			if !deadline.IsZero() {
+				t.Fatal("confirmation armed a timer")
 			}
 			next, cmd := m.Update(msg)
 			m = next.(Model)
@@ -81,26 +81,24 @@ func TestQuickCancellationKeys(t *testing.T) {
 		})
 	}
 }
-func TestCountdownExpiresOnceAfterFullDelay(t *testing.T) {
+func TestSavedCountdownPolicyCannotExecute(t *testing.T) {
 	m, s := quickFixture(t, "READ", true)
-	deadline := m.runDeadline
-	gen := m.runGeneration
-	if deadline.IsZero() || time.Until(deadline) < 2400*time.Millisecond {
-		t.Fatal("timer not 2.5 seconds")
+	if !m.runDeadline.IsZero() {
+		t.Fatal("saved policy armed a timer")
 	}
-	next, cmd := m.Update(confirmationTick{gen, deadline.Add(-time.Millisecond)})
-	m = next.(Model)
-	if cmd == nil || s.saves != 0 {
-		t.Fatal("early execution")
+	for _, at := range []time.Time{time.Now(), time.Now().Add(time.Hour)} {
+		next, cmd := m.Update(confirmationTick{m.runGeneration, at})
+		m = next.(Model)
+		if cmd != nil || s.saves != 0 || m.mode != "run" {
+			t.Fatal("timer executed without confirmation")
+		}
 	}
-	next, cmd = m.Update(confirmationTick{gen, deadline})
-	m = next.(Model)
-	if cmd == nil || s.saves != 1 {
-		t.Fatal("deadline did not execute once")
+	if _, cmd := m.executeConfirmed(true); cmd != nil || s.saves != 0 {
+		t.Fatal("automatic execution accepted")
 	}
-	_, cmd = m.Update(confirmationTick{gen, deadline.Add(time.Millisecond)})
-	if cmd != nil || s.saves != 1 {
-		t.Fatal("duplicate timer execution")
+	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil || s.saves != 1 || next.(Model).mode != "executing" {
+		t.Fatal("explicit confirmation failed")
 	}
 }
 func TestNoCountdownFromRiskLabelAlone(t *testing.T) {
@@ -179,7 +177,7 @@ func TestEditedEntryInvalidatesTimerApproval(t *testing.T) {
 		}
 	}
 	s.cs[0].Command = "printf changed"
-	next, cmd := m.Update(confirmationTick{m.runGeneration, m.runDeadline})
+	next, cmd := m.Update(singleKey("y"))
 	if cmd != nil || s.saves != 0 || next.(Model).mode != "" {
 		t.Fatal("changed on-disk command executed")
 	}

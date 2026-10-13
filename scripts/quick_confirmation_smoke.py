@@ -38,7 +38,7 @@ class Session:
         self.proc.wait(timeout=5);os.close(self.master)
 
 cases=[('space',True,b' ',True),('y',False,b'y',True),('one',False,b'1',True),('enter',False,b'\r',True),
-       ('auto',True,None,True),('cancel_n',True,b'n',False),('cancel_zero',True,b'0',False),
+       ('legacy_policy_no_auto',True,None,False),('cancel_n',True,b'n',False),('cancel_zero',True,b'0',False),
        ('cancel_backspace',True,b'\x7f',False),('cancel_delete',True,b'\x1b[3~',False),('cancel_escape',True,b'\x1b',False),
        ('paste_is_not_yes',True,b'\x1b[200~y\x1b[201~',False),('blur',True,b'\x1b[O',False),
        ('not_approved',False,None,False),('write_stays_explicit',True,b' ',False)]
@@ -57,10 +57,10 @@ with tempfile.TemporaryDirectory(prefix='cmdlib-quick-pty-') as tmp:
         try:
             session.wait(b'Synthetic quick confirmation')
             # Merely viewing the fixture must not launch it.
-            if name=='auto':session.pump(2.7);assert not marker.exists(),'executed on selection'
+            if name=='legacy_policy_no_auto':session.pump(2.7);assert not marker.exists(),'executed on selection'
             start=time.monotonic();session.send(b'\r')
             session.wait(b'Execution host:')
-            if auto and row['risk']=='READ':session.wait(b'Start in 2.5s')
+            if auto: assert b'Start in 2.5s' not in session.captured, 'timer armed'
             assert not marker.exists(),'ran before confirmation'
             if keys is not None:session.send(keys)
             if will_run:
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='cmdlib-quick-pty-') as tmp:
                 elapsed=time.monotonic()-start
                 assert marker.read_text()=='ran\n','wrong or duplicate invocation'
                 assert json.loads(lib.read_text())[0]['use_count']==1
-                if name=='auto':assert elapsed>=2.4,'countdown expired early'
+                assert elapsed < 7, 'explicit confirmation stalled'
                 session.send(b'\r');session.wait(b'Command finished.')
                 session.pump(.3);assert marker.read_text()=='ran\n','stale timer duplicate'
                 session.send(b'q')

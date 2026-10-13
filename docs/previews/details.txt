@@ -1,0 +1,30 @@
+  cmdlib
+
+  › Working Directory              Details
+    List Files
+    UTC Time                         Tags
+    Git Status                       files, directory
+    Print Hello
+                                   › Host
+                                     local
+
+                                     Risk
+                                     READ
+
+                                     Explanation
+                                     Synthetic explanation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ←/→ level · ↑↓ field · e edit · Tab list · r run

@@ -1,0 +1,28 @@
+╭────────────────────────────────────────────────────────────────────────────────────────╮
+│ cmdlib  / by ai-mate.ai                                                                │
+│ host: example-machine                                                                  │
+│ Search: name, command, category, tags, host…                                           │
+│ ────────────────────────────────────────────────────────────────────────────────────── │
+│ Commands (5)                   │ Working Directory                                     │
+│                                                                                        │
+│ › Working Directory              pwd  [?]                                              │
+│   List Files                                                                           │
+│   UTC Time                       Tags: files · directory                               │
+│   Git Status                     Host: local   Risk: READ                              │
+│   Print Hello                    Requires: None recorded                               │
+│                                                                                        │
+│                                  Shows the current working directory.                  │
+│                                                                                        │
+│                                  Used: 0 times                                         │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│                                                                                        │
+│ [Copy] [Run] [Edit] [Move] [Delete]                                                    │
+│ Enter Run · m move · d delete · u undo · / search · p check · a AI                     │
+│ ↑↓ select · Enter Run · / search · m move · d delete · u undo · p check · a AI         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯

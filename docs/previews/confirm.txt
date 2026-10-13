@@ -1,0 +1,30 @@
+  cmdlib
+
+  Review this command before starting.
+  Execution host: example-machine (darwin) via /bin/sh
+  Host labels do not route execution.
+
+  Working Directory
+
+  pwd
+
+  Host: local   Risk: READ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Enter / Space start · Esc cancel · PgUp/PgDown review
