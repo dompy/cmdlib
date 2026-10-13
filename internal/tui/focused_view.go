@@ -9,8 +9,8 @@ import (
 )
 
 // Field indices match the existing editor and on-disk command model.
-var layerFields = [][]int{{2}, {1}, {0, 8, 3, 4, 5, 6, 7}}
-var layerNames = []string{"Command", "Description", "Details"}
+var layerFields = [][]int{{2, 1}, {0, 8, 3, 4, 5, 6, 7}}
+var layerNames = []string{"Command", "Details"}
 
 func (m Model) listWidth() int { return max(22, min(30, m.width/3)) }
 
@@ -55,7 +55,10 @@ func (m Model) fieldContent(c library.Command) string {
 		selected := m.fieldFocus && field == m.detailField
 		value := safe(fieldValue(c, field))
 		editing := m.mode == "edit" && field == m.field
-		if m.layer == 2 && !selected && (value == "" || field == 0) {
+		if m.layer == 1 && !selected && (value == "" || field == 0) {
+			continue
+		}
+		if field == 1 && value == "" && !selected && !editing {
 			continue
 		}
 		if editing {
@@ -68,13 +71,13 @@ func (m Model) fieldContent(c library.Command) string {
 		if selected {
 			marker = accent.Render("› ")
 		}
-		if m.layer == 2 {
+		if m.layer == 1 {
 			lines = append(lines, marker+muted.Render(labels[field])+"\n  "+value, "")
 		} else {
-			if !editing {
+			if !editing && field == 2 {
 				value = accent.Render(value)
 			}
-			lines = append(lines, marker+value)
+			lines = append(lines, marker+value, "")
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -165,11 +168,11 @@ func (m Model) View() string {
 	body := m.detail.View()
 	browse := m.mode == "" || m.mode == "edit" && !m.creating
 	if browse && m.width >= 76 {
-		showName := !(m.layer == 2 && m.fieldFocus && m.detailField == 0)
+		showName := !(m.layer == 1 && m.fieldFocus && m.detailField == 0)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, m.listView(m.detail.Height, showName), "   ", body)
 	} else if browse {
 		// Narrow terminals show only the selected row, keeping the detail usable.
-		if row, ok := m.selectedRow(); ok && !(m.layer == 2 && m.fieldFocus && m.detailField == 0) {
+		if row, ok := m.selectedRow(); ok && !(m.layer == 1 && m.fieldFocus && m.detailField == 0) {
 			name := row.command.Name
 			if row.category != "" {
 				name = row.category
