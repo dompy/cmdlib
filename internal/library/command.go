@@ -14,6 +14,7 @@ type Command struct {
 	Explanation  string     `json:"explanation"`
 	Tags         []string   `json:"tags"`
 	Host         string     `json:"host"`
+	Category     string     `json:"category,omitempty"`
 	Risk         string     `json:"risk"`
 	Prerequisite string     `json:"prerequisite"`
 	CreatedAt    time.Time  `json:"created_at"`

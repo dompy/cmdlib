@@ -1,0 +1,30 @@
+  cmdlib
+
+  › Working Directory              Description
+    List Files
+    UTC Time                       › Synthetic description
+    Git Status
+    Print Hello
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ←/→ level · ↑↓ field · e edit · Tab list · r run

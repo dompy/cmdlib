@@ -81,13 +81,12 @@ with tempfile.TemporaryDirectory(prefix="cmdlib-smoke-") as tmp:
             send(b"\x1b[200~synthetic fixture\x1b[201~")
             wait_for(b"synthetic fixture")
             send(b"\x1b")
-            send(b"\x1b[C")
             send(b"\r")
             wait_for(b"Execution host:")
             wait_for(b"example-remote-label")
             assert path.read_bytes() == raw, "Selection changed data"
             if confirm:
-                send(b"yes\r")
+                send(b"y")
                 wait_for(b"Exit status: 0")
                 send(b"\r")
                 wait_for(b"Command finished.")

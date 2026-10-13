@@ -17,7 +17,7 @@ func Filter(cs []library.Command, query string) []library.Command {
 	hits := []hit{}
 	for _, c := range cs {
 		name := strings.ToLower(c.Name)
-		hay := strings.ToLower(strings.Join([]string{c.Name, c.Command, c.Description, strings.Join(c.Tags, " "), c.Host, c.Risk}, " "))
+		hay := strings.ToLower(strings.Join([]string{c.Name, c.Command, c.Description, strings.Join(c.Tags, " "), c.Host, c.Category, c.Risk}, " "))
 		score := 0
 		ok := true
 		for _, word := range strings.Fields(strings.ToLower(query)) {

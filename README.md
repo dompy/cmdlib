@@ -4,6 +4,11 @@ A small, offline terminal command library for commands you use too rarely to rem
 Find a command, read its explanation, copy its exact text, or deliberately run it.
 Built with Go, Bubble Tea, Bubbles, and Lip Gloss. [ai-mate.ai](https://ai-mate.ai) is the project attribution.
 
+This focused UI build restores the tested local category and maintenance features,
+then adds command/description/details layers and direct editing of the selected field.
+See [focused controls and previews](docs/focused-ui.md). The Python helper in PR #3
+is separate work and is not changed here.
+
 ## Install
 
 Download the matching archive and `checksums.txt` from [Releases](https://github.com/dompy/cmdlib/releases).
@@ -35,37 +40,44 @@ go build -trimpath -o cmdlib .
 
 ## Use
 
-Search matches names, command text, descriptions, tags, host labels, and risk labels.
-Multiple words must all match; fuzzy abbreviations are supported.
-The selected command and details stay visible in the wide terminal layout.
+The selected command is prominent; other results are muted. Description and metadata
+are revealed only when requested. Wide terminals retain the search/detail layout;
+narrow terminals show the selected row above its detail.
 
 | Key | Action |
 | --- | --- |
-| `/` | Focus search; normal typing and pasted text work |
-| `↑` / `↓` | Select a result |
-| `←` / `→` | Select Copy / Run / Edit |
-| `Enter` | Activate the selected action |
-| `?` | Toggle the selected command's contextual explanation |
-| `PgUp` / `PgDown` | Scroll details |
-| `n` | Add a command |
-| `h` | Guided tutorial, one visible command per step |
-| `Esc` | Leave search, clear search, or cancel the active view |
-| `q` / `Ctrl+C` | Quit (`q` is normal text while searching) |
+| `/` | Search by name, command, category, tags, host or risk; ordinary paste works |
+| `↑` / `↓` | Select a result; in field focus, select a field |
+| `Tab` | Switch between results and field focus |
+| `←` / `→` | Choose an action; in field focus, choose Command / Description / Details |
+| `e` | Edit the marked field in place; Enter saves and Esc discards |
+| `Enter` | Activate the selected action; category headers expand/collapse |
+| `r` / `c` | Review a run / copy the exact command |
+| `?` / `h` | Contextual explanation / tutorial and full controls |
+| `n` | New command; Tab switches fields, Enter saves, Esc cancels |
+| `m` / Alt+↑ / Alt+↓ | Move a command |
+| `d` / Delete | Review deletion; Enter confirms, Esc cancels |
+| `e` / F2 on a category | Rename the whole category |
+| `u` | Undo the last organization change or field edit in this session |
+| `p` / `a` | Local checks / queue one Codex metadata-only review |
+| `Esc` | Leave search or clear the query; cancel an open view |
+| `q` / Ctrl+C | Quit; q remains ordinary text while searching or editing |
 
-In the editor, use Tab / Shift+Tab to select a field, Ctrl+S to save, and Esc to cancel.
-Changing command text clears an unchanged explanation so stale documentation does not silently remain.
-Tutorial controls are ←/→ for steps, `?` for contextual explanation, `c` Copy, and `r` Run.
+Field editing uses the existing storage format, validation, backups and conflict
+checks. Changing command text clears an unchanged explanation. No existing personal
+library is migrated or replaced. On creation, fields start with the existing defaults.
 
-Selection and copying never execute a command. Run shows the actual local execution machine and
-exact command before confirmation. Type `yes` for READ / CONNECT, `WRITE` for WRITE,
-or `RUN <id>` for DANGER. Esc cancels. Commands run locally through `/bin/sh` with your permissions
-and current working directory. The explicit command may itself open a remote connection;
-a Host label does not route execution. READ and other labels are authored metadata, not safety checks.
-Confirmed run attempts are recorded before execution; the count includes failed attempts.
+Selection and copying never execute. Run always opens a separate review showing
+the real command and actual local execution machine. READ / CONNECT accept an explicit
+Enter, Space, y or 1; WRITE requires typing WRITE; DANGER requires RUN followed by the
+command ID. Esc cancels. Pasted approval is ignored. This build has no automatic
+execution, even when a legacy `.run-policy.json` exists.
 
-Copy uses `pbcopy` on macOS, `wl-copy` on Wayland, or `xclip` on X11.
-Without a working clipboard, the exact command is shown for manual copying.
-`?` opens a compact local explanation beside the selected command. Known command tokens get concise built-in hints; stored explanation text remains the fallback. No AI service or network connection is involved.
+Commands run through `/bin/sh` with the current user's permissions and working directory.
+A Host label does not route execution, and risk labels are authored metadata, not
+security checks. The confirmed run is recorded before execution; failed attempts also
+count. Clipboard handling remains pbcopy on macOS, wl-copy on Wayland or xclip on X11,
+with an exact-text fallback if no clipboard is available.
 
 ## Data and privacy
 
@@ -77,8 +89,9 @@ Your library is a local JSON array. Default locations:
 
 Five harmless examples are created only when the file is absent. Existing libraries, including empty
 ones, are preserved. Writes use a private temporary file and atomic replacement. There is no account,
-telemetry, server synchronization, credential storage, or LLM API requirement. Remote sync and AI
-explanations are possible future work, not implemented features.
+telemetry, server synchronization, credential storage, or LLM API requirement. Remote sync remains
+future work. The optional advisor uses the owner's existing ChatGPT Codex CLI session;
+queued checks run only while cmdlib is closed and never modify commands or install updates.
 
 Back up the JSON file before editing or upgrading. For example on macOS:
 
@@ -110,6 +123,7 @@ go test ./...
 go vet ./...
 go build -trimpath -o cmdlib .
 python3 scripts/smoke.py ./cmdlib
+python3 scripts/focused_ui_smoke.py ./cmdlib
 ```
 
 CI uses hosted runners for native tests on all four release targets and checks formatting, race tests,
