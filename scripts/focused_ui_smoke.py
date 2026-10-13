@@ -35,15 +35,18 @@ def state():
  text=captured.decode(errors="replace").replace(socket.gethostname(),"example-machine").replace(str(root),"<isolated-fixture>")
  return dict(alive=process.poll() is None, names=[n for n in ["Anchor Fixture","Write Fixture"] if n in text], confirmation="Execution host:" in text, error="Save failed" in text, executed=marker.exists(), uses=[c["use_count"] for c in json.loads(db.read_text())], description=json.loads(db.read_text())[0]["description"])
 pump(1)
-assert b"Synthetic description" in captured, "Description missing from main view"
-assert b"printf" in captured, "Command missing from main view"
 sequence = json.loads("[{\"keys\":\"/\\u001b[200~Write\\u001b[201~\\r\",\"expect\":{\"executed\":false,\"uses\":[0,0]}},{\"keys\":\"\\r\",\"expect\":{\"confirmation\":true,\"executed\":false,\"uses\":[0,0]}},{\"keys\":\"\\u001b[200~WRITE\\u001b[201~\\r\",\"expect\":{\"executed\":false,\"uses\":[0,0]}},{\"keys\":\"\\u001b\",\"expect\":{\"executed\":false,\"uses\":[0,0]}},{\"keys\":\"\\r\",\"expect\":{\"confirmation\":true,\"executed\":false,\"uses\":[0,0]}},{\"keys\":\"WRITE\\r\",\"expect\":{\"executed\":true,\"uses\":[0,1]}},{\"keys\":\"\\r\",\"expect\":{\"alive\":true,\"executed\":true,\"uses\":[0,1]}},{\"keys\":\"\\u001b\",\"expect\":{\"alive\":true,\"uses\":[0,1]}},{\"keys\":\"\\u001b[A\\t\\u001b[B\",\"expect\":{\"alive\":true,\"uses\":[0,1]}},{\"keys\":\"e\\u0015\\u001b[200~Edited synthetic description\\u001b[201~\\r\",\"expect\":{\"description\":\"Edited synthetic description\",\"uses\":[0,1]}},{\"keys\":\"e\\u0015Cancelled draft\\u001b\",\"expect\":{\"description\":\"Edited synthetic description\",\"uses\":[0,1]}},{\"keys\":\"\\tq\",\"expect\":{\"alive\":false,\"uses\":[0,1]}}]")
 try:
+ assert b"Synthetic description" in captured, "Description missing from main view"
+ assert b"printf" in captured, "Command missing from main view"
  for req in sequence:
   send(req['keys'].encode())
   result=state()
   for name,value in req.get('expect',{}).items(): assert result[name]==value,(name,result)
  print(json.dumps({'native_focused_ui': 'passed', 'steps': len(sequence), 'personal_commands_executed': 0},indent=2))
 finally:
- if process.poll() is None: process.terminate();process.wait(timeout=3)
+ if process.poll() is None:
+  process.terminate()
+  try: process.wait(timeout=3)
+  except subprocess.TimeoutExpired: process.kill();process.wait(timeout=3)
  os.close(master);fixture.cleanup()
