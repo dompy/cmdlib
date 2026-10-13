@@ -162,7 +162,7 @@ func TestCategoryEditorAndEmptyLibraryDeleteUndo(t *testing.T) {
 	cs := library.Seeds()[:1]
 	s := &memory{cs: cs}
 	m := New(s, cs, "")
-	m.layer = 2
+	m.layer = 1
 	m.detailField = 8
 	m.fieldFocus = true
 	m = typedKey(m, "e")

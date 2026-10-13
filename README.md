@@ -5,7 +5,7 @@ Find a command, read its explanation, copy its exact text, or deliberately run i
 Built with Go, Bubble Tea, Bubbles, and Lip Gloss. [ai-mate.ai](https://ai-mate.ai) is the project attribution.
 
 This focused UI build restores the tested local category and maintenance features,
-then adds command/description/details layers and direct editing of the selected field.
+then shows command and description together, with direct editing of the selected field.
 See [focused controls and previews](docs/focused-ui.md). The Python helper in PR #3
 is separate work and is not changed here.
 
@@ -40,8 +40,8 @@ go build -trimpath -o cmdlib .
 
 ## Use
 
-The selected command is prominent; other results are muted. Description and metadata
-are revealed only when requested. Wide terminals retain the search/detail layout;
+The selected command is prominent, with its description directly underneath and no
+field headings; other results are muted. Metadata is revealed only when requested. Wide terminals retain the search/detail layout;
 narrow terminals show the selected row above its detail.
 
 | Key | Action |
@@ -49,7 +49,7 @@ narrow terminals show the selected row above its detail.
 | `/` | Search by name, command, category, tags, host or risk; ordinary paste works |
 | `↑` / `↓` | Select a result; in field focus, select a field |
 | `Tab` | Switch between results and field focus |
-| `←` / `→` | Choose an action; in field focus, choose Command / Description / Details |
+| `←` / `→` | Choose an action; in field focus, choose the main view / Details |
 | `e` | Edit the marked field in place; Enter saves and Esc discards |
 | `Enter` | Activate the selected action; category headers expand/collapse |
 | `r` / `c` | Review a run / copy the exact command |

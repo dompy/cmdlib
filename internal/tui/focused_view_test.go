@@ -27,18 +27,27 @@ func TestFocusLayersDoNotExecute(t *testing.T) {
 	if strings.Count(v, m.all[0].Name) != 1 || strings.Count(v, m.all[0].Command) != 1 {
 		t.Fatal("selected name or command repeated")
 	}
-	for _, hidden := range []string{"Synthetic description", "Requires:", "Host:", "example-machine", "[Copy]", "[Run]", "by ai-mate.ai"} {
+	for _, hidden := range []string{"Requires:", "Host:", "example-machine", "[Copy]", "[Run]", "by ai-mate.ai"} {
 		if strings.Contains(v, hidden) {
 			t.Fatalf("default view includes %q", hidden)
 		}
 	}
+	if strings.Count(v, "Synthetic description") != 1 || strings.Index(v, m.all[0].Command) > strings.Index(v, "Synthetic description") {
+		t.Fatal("command and description are not shown once in order")
+	}
+	content := m.fieldContent(m.all[0])
+	for _, label := range []string{"Command", "Description"} {
+		if strings.Contains(content, label) {
+			t.Fatalf("main view includes field heading %q", label)
+		}
+	}
 	m = key(m, tea.KeyTab)
-	m = key(m, tea.KeyRight)
+	m = key(m, tea.KeyDown)
 	if !m.fieldFocus || m.detailField != 1 || !strings.Contains(m.View(), "Synthetic description") {
-		t.Fatal("description layer unavailable")
+		t.Fatal("description field unavailable")
 	}
 	m = key(m, tea.KeyRight)
-	for _, field := range layerFields[2] {
+	for _, field := range layerFields[1] {
 		m.detailField = field
 		m.layout()
 		if !strings.Contains(m.View(), labels[field]) {
@@ -57,9 +66,9 @@ func TestInlineEditSaveCancelAndConcurrentChanges(t *testing.T) {
 			original := m.all[0]
 			m.detailField = field
 			if field == 1 {
-				m.layer = 1
+				m.layer = 0
 			} else if field != 2 {
-				m.layer = 2
+				m.layer = 1
 			}
 			next, _ := m.Update(singleKey("e"))
 			m = next.(Model)
@@ -139,13 +148,13 @@ func TestFocusedPreview(t *testing.T) {
 			switch mode {
 			case "description":
 				m.fieldFocus = true
-				m.layer = 1
+				m.layer = 0
 				m.detailField = 1
 			case "details":
-				m.layer = 2
+				m.layer = 1
 				m.detailField = 4
 			case "edit":
-				m.layer = 1
+				m.layer = 0
 				m.detailField = 1
 				m.target = m.all[0]
 				m.beginEdit()
@@ -185,7 +194,7 @@ func TestFocusedControlsRemainVisible(t *testing.T) {
 		}
 		m.mode = ""
 		m.fieldFocus = true
-		m.layer = 2
+		m.layer = 1
 		m.detailField = 7
 		m.layout()
 		if !strings.Contains(m.View(), "Explanation") || lipgloss.Height(m.View()) > size[1] {
@@ -201,7 +210,7 @@ func TestInlineMultilineContentIsPreserved(t *testing.T) {
 	s.cs = append([]library.Command(nil), m.all...)
 	m.refresh()
 	m.target = m.all[0]
-	m.layer = 1
+	m.layer = 0
 	m.detailField = 1
 	m.beginEdit()
 	m.fields[1].SetValue("Updated description")
