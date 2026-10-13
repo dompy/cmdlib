@@ -38,7 +38,8 @@ var explainBox = lipgloss.NewStyle().
 	Padding(0, 1)
 
 var actions = []string{"Copy", "Run", "Edit"}
-var labels = []string{"Name", "Description", "Command", "Tags (comma separated)", "Host", "Risk: READ / WRITE / DANGER / CONNECT", "Prerequisite", "Explanation"}
+var organizationActions = []string{"Move", "Delete"}
+var labels = []string{"Name", "Description", "Command", "Tags (comma separated)", "Host", "Risk: READ / WRITE / DANGER / CONNECT", "Prerequisite", "Explanation", "Category (empty = main list)"}
 
 type Model struct {
 	store                                        storage.Store
@@ -48,7 +49,18 @@ type Model struct {
 	search, confirm                              textinput.Model
 	fields                                       []textinput.Model
 	detail                                       viewport.Model
+	rows                                         []libraryRow
+	expanded                                     map[string]bool
+	moveDraft, undoAll                           []library.Command
+	moveCategory                                 textinput.Model
+	renameCategory                               textinput.Model
+	renameOriginal, undoCategory                 string
+	undoExpanded                                 map[string]bool
+	undoLabel                                    string
 	target                                       library.Command
+	runGeneration                                uint64
+	runDeadline                                  time.Time
+	runFingerprint                               string
 }
 type copied struct{ err error }
 type executed struct{ err error }
@@ -56,22 +68,23 @@ type executed struct{ err error }
 func New(s storage.Store, cs []library.Command, path string) Model {
 	input := textinput.New()
 	input.Prompt = "Search: "
-	input.Placeholder = "name, command, tags, host…"
+	input.Placeholder = "name, command, category, tags, host…"
 	input.CharLimit = 256
 	confirm := textinput.New()
 	confirm.Prompt = "> "
 	confirm.CharLimit = 256
 	host, _ := os.Hostname()
-	m := Model{store: s, all: cs, results: search.Filter(cs, ""), path: path, host: host, search: input, confirm: confirm, width: 90, height: 30, detail: viewport.New(50, 18), status: "/ search · ? explain · h tutorial · n new command"}
+	m := Model{store: s, all: append([]library.Command(nil), cs...), results: search.Filter(cs, ""), path: path, host: host, search: input, confirm: confirm, action: 1, expanded: map[string]bool{}, width: 90, height: 30, detail: viewport.New(50, 18), status: "Enter Run · m move · d delete · u undo · / search · p check · a AI"}
+	m.loadViewState()
 	m.refresh()
 	return m
 }
 func (m Model) Init() tea.Cmd { return nil }
 func (m Model) current() (library.Command, bool) {
-	if len(m.results) == 0 {
+	if m.selected < 0 || m.selected >= len(m.rows) || m.rows[m.selected].category != "" {
 		return library.Command{}, false
 	}
-	return m.results[m.selected], true
+	return m.rows[m.selected].command, true
 }
 
 // Display untrusted library text without terminal escape/control sequences.
@@ -88,7 +101,8 @@ func safe(s string) string {
 }
 func (m *Model) refresh() {
 	m.results = search.Filter(m.all, m.search.Value())
-	m.selected = min(m.selected, max(0, len(m.results)-1))
+	m.rebuildRows()
+	m.selected = min(m.selected, max(0, len(m.rows)-1))
 	m.detail.GotoTop()
 	m.layout()
 }
@@ -102,6 +116,8 @@ func (m *Model) layout() {
 	m.detail.Height = h
 	m.search.Width = max(5, m.width-16)
 	m.confirm.Width = max(5, m.width-10)
+	m.moveCategory.Width = max(10, w-14)
+	m.renameCategory.Width = max(10, w-14)
 	m.detail.SetContent(lipgloss.NewStyle().Width(w).Render(m.content()))
 }
 func (m Model) commandDetails(c library.Command) string {
@@ -110,7 +126,11 @@ func (m Model) commandDetails(c library.Command) string {
 		pre = "None recorded"
 	}
 	commandLine := safe(c.Command) + "  " + explainTitle.Render("[?]")
-	return accent.Render(safe(c.Name)) + "\n\n" + commandLine + "\n\n" + muted.Render("Tags: ") + safe(strings.Join(c.Tags, " · ")) + "\nHost: " + safe(c.Host) + "   Risk: " + riskStyle(c.Risk) + "\nRequires: " + safe(pre) + "\n\n" + safe(c.Description)
+	category := ""
+	if c.Category != "" {
+		category = "\nCategory: " + safe(c.Category)
+	}
+	return accent.Render(safe(c.Name)) + "\n\n" + commandLine + "\n\n" + muted.Render("Tags: ") + safe(strings.Join(c.Tags, " · ")) + category + "\nHost: " + safe(c.Host) + "   Risk: " + riskStyle(c.Risk) + "\nRequires: " + safe(pre) + "\n\n" + safe(c.Description)
 }
 func riskStyle(r string) string {
 	if r == "WRITE" || r == "DANGER" {
@@ -227,6 +247,17 @@ func (m Model) explanationPopover(c library.Command) string {
 	return explainBox.Width(width).Render(content)
 }
 func (m Model) content() string {
+	if m.mode == "rename-category" {
+		return m.renameCategoryContent()
+	}
+	if m.mode == "move" {
+		return m.moveContent()
+	}
+	if m.mode == "" {
+		if row, ok := m.selectedRow(); ok && row.category != "" {
+			return accent.Render(safe(row.category)) + fmt.Sprintf("\n\n%d commands\n\n", row.count) + "Enter expands / collapses this category.\ne: Kategorie umbenennen\n\nUse / to search every command, including closed categories.\nCommands inside a category retain their saved order."
+		}
+	}
 	c, ok := m.current()
 	if m.mode != "" {
 		c = m.target
@@ -241,6 +272,8 @@ func (m Model) content() string {
 	}
 	body := m.commandDetails(c)
 	switch m.mode {
+	case "delete":
+		return warning.Render("Delete this command from the library?") + "\n\n" + body + "\n\nEnter / y: delete · Esc / n: cancel\nNothing will execute. After deletion, u restores it."
 	case "explain":
 		return body + "\n\n" + m.explanationPopover(c) + "\n\n" + muted.Render("? / Esc close")
 	case "copy":
@@ -256,7 +289,11 @@ func (m Model) content() string {
 		if c.Risk == "CONNECT" {
 			note = "This opens a connection and may run commands or start processes remotely."
 		}
-		return warning.Render(note) + "\nExecution host: " + safe(m.host) + " (" + runtime.GOOS + ") via /bin/sh\nHost labels do not route execution.\nType " + confirmation(c) + " to execute · Esc cancels\n\n" + body
+		prompt := "Type " + confirmation(c) + " to execute · Esc cancels"
+		if quickConfirmation(c) {
+			prompt = "Enter / Space / y / 1: start · Esc / n / 0 / Backspace / Del: cancel"
+		}
+		return warning.Render(note) + "\nExecution host: " + safe(m.host) + " (" + runtime.GOOS + ") via /bin/sh\nHost labels do not route execution.\n" + prompt + "\n\n" + body
 	}
 	return body + fmt.Sprintf("\n\nUsed: %d times", c.UseCount)
 }
@@ -273,7 +310,17 @@ func confirmation(c library.Command) string {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case confirmationTick:
+		return m.confirmTick(msg)
+	case tea.BlurMsg:
+		if m.mode == "run" {
+			m.pauseCountdown("Countdown paused: window lost focus; confirm explicitly.")
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
+		if m.mode == "run" {
+			m.pauseCountdown("Countdown paused: window resized; confirm explicitly.")
+		}
 		m.width = msg.Width
 		m.height = msg.Height
 		m.layout()
@@ -289,62 +336,61 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case executed:
 		m.mode = ""
+		m.action = 1
 		m.status = "Command finished."
 		if msg.err != nil {
 			m.status = "Command failed: " + msg.err.Error()
 		}
 		m.layout()
 		return m, nil
+	case maintenanceFinished:
+		m.mode = ""
+		m.action = 1
+		m.status = "Check finished."
+		if msg.err != nil {
+			m.status = "Check: " + msg.err.Error()
+		}
+		if latest, err := m.store.Load(context.Background()); err == nil {
+			m.all = latest
+		}
+		m.refresh()
+		return m, nil
+	case queuedMaintenance:
+		m.status = "KI-Prüfung vorgemerkt; nach dem Schließen im Hintergrund."
+		if msg.err != nil {
+			m.status = "KI-Prüfung konnte nicht vorgemerkt werden: " + msg.err.Error()
+		}
+		return m, nil
 	case tea.KeyMsg:
 		key := msg.String()
 		if key == "ctrl+c" {
+			m.runGeneration++
+			m.runDeadline = time.Time{}
 			return m, tea.Quit
+		}
+		if msg.Paste && m.mode == "" && !m.search.Focused() {
+			focus := m.search.Focus()
+			var cmd tea.Cmd
+			m.search, cmd = m.search.Update(msg)
+			m.selected = 0
+			m.action = 1
+			m.refresh()
+			return m, tea.Batch(focus, cmd)
 		}
 		if m.mode == "edit" {
 			return m.updateEdit(msg)
 		}
 		if m.mode == "run" {
-			if key == "pgup" || key == "pgdown" {
-				var cmd tea.Cmd
-				m.detail, cmd = m.detail.Update(msg)
-				return m, cmd
-			}
-			if key == "esc" {
-				m.mode = m.returnMode
-				m.confirm.Blur()
-				m.layout()
-				return m, nil
-			}
-			if key == "enter" {
-				if m.confirm.Value() != confirmation(m.target) {
-					m.status = "Confirmation does not match; nothing executed."
-					return m, nil
-				}
-				// Persist the confirmed attempt before handing the terminal to the child.
-				cs := append([]library.Command(nil), m.all...)
-				now := time.Now().UTC()
-				for i := range cs {
-					if cs[i].ID == m.target.ID {
-						cs[i].UseCount++
-						cs[i].LastUsedAt = &now
-					}
-				}
-				if err := m.store.Save(context.Background(), cs); err != nil {
-					m.status = "Cannot record run; nothing executed: " + err.Error()
-					return m, nil
-				}
-				m.all = cs
-				m.refresh()
-				cmd := exec.Command("/bin/sh", "-c", `/bin/sh -c "$1"
-cmdlib_status=$?
-printf '\n[cmdlib] Exit status: %s. Press Enter to return. ' "$cmdlib_status"
-read -r cmdlib_reply
-exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
-				return m, tea.ExecProcess(cmd, func(err error) tea.Msg { return executed{err} })
-			}
-			var cmd tea.Cmd
-			m.confirm, cmd = m.confirm.Update(msg)
-			return m, cmd
+			return m.confirmKey(msg)
+		}
+		if m.mode == "move" {
+			return m.updateMove(msg)
+		}
+		if m.mode == "rename-category" {
+			return m.updateRenameCategory(msg)
+		}
+		if m.mode == "delete" {
+			return m.updateDelete(msg)
 		}
 		if m.mode == "help" {
 			switch key {
@@ -385,21 +431,24 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 			switch key {
 			case "esc", "enter":
 				m.search.Blur()
+				m.action = 1
 				return m, nil
 			case "up", "down":
 				m.search.Blur()
 				if key == "down" {
-					m.selected = min(m.selected+1, len(m.results)-1)
+					m.selected = min(m.selected+1, len(m.rows)-1)
 				} else {
 					m.selected = max(0, m.selected-1)
 				}
 				m.selected = max(0, m.selected)
+				m.action = 1
 				m.layout()
 				return m, nil
 			}
 			var cmd tea.Cmd
 			m.search, cmd = m.search.Update(msg)
 			m.selected = 0
+			m.action = 1
 			m.refresh()
 			return m, cmd
 		} else {
@@ -412,23 +461,26 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 			case "esc":
 				m.search.SetValue("")
 				m.selected = 0
+				m.action = 1
 				m.refresh()
 				return m, nil
 			case "up":
 				m.selected = max(0, m.selected-1)
+				m.action = 1
 				m.detail.GotoTop()
 				m.layout()
 				return m, nil
 			case "down":
-				m.selected = max(0, min(len(m.results)-1, m.selected+1))
+				m.selected = max(0, min(len(m.rows)-1, m.selected+1))
+				m.action = 1
 				m.detail.GotoTop()
 				m.layout()
 				return m, nil
 			case "left":
-				m.action = (m.action + len(actions) - 1) % len(actions)
+				m.action = (m.action + len(actions) + len(organizationActions) - 1) % (len(actions) + len(organizationActions))
 				return m, nil
 			case "right":
-				m.action = (m.action + 1) % len(actions)
+				m.action = (m.action + 1) % (len(actions) + len(organizationActions))
 				return m, nil
 			case "?":
 				if c, ok := m.current(); ok {
@@ -449,7 +501,45 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 				m.target = library.Command{ID: fmt.Sprintf("cmd-%d", time.Now().UnixNano()), Risk: "READ", Host: m.host}
 				m.beginEdit()
 				return m, textinput.Blink
+			case "r", "c", "e", "m", "d", "delete", "f2":
+				if row, ok := m.selectedRow(); ok && row.category != "" && (key == "e" || key == "f2") {
+					return m.beginRenameCategory(row.category)
+				}
+				if key == "f2" {
+					return m, nil
+				}
+				if c, ok := m.current(); ok {
+					m.target = c
+					m.returnMode = ""
+					a := map[string]int{"r": 1, "c": 0, "e": 2, "m": 3, "d": 4, "delete": 4}[key]
+					return m.activate(a)
+				}
+				return m, nil
+			case "alt+up", "alt+down":
+				if c, ok := m.current(); ok {
+					m.target = c
+					m.beginMove()
+					direction := -1
+					if key == "alt+down" {
+						direction = 1
+					}
+					m.shiftMove(direction)
+					return m.saveMove()
+				}
+				return m, nil
+			case "u":
+				return m.undoOrganization()
+			case "p":
+				return m.openMaintenance("doctor")
+			case "a":
+				return m.openMaintenance("assist")
 			case "enter":
+				if row, ok := m.selectedRow(); ok && row.category != "" {
+					m.expanded[row.category] = !m.expanded[row.category]
+					m.saveViewState()
+					m.refresh()
+					return m, nil
+				}
 				if c, ok := m.current(); ok {
 					m.target = c
 					m.returnMode = ""
@@ -459,6 +549,11 @@ exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
 		}
 	}
 	var cmd tea.Cmd
+	if m.mode == "rename-category" {
+		m.renameCategory, cmd = m.renameCategory.Update(msg)
+		m.layout()
+		return m, cmd
+	}
 	if m.mode == "edit" {
 		m.fields[m.field], cmd = m.fields[m.field].Update(msg)
 		return m, cmd
@@ -503,15 +598,16 @@ func (m Model) activate(a int) (tea.Model, tea.Cmd) {
 			return copied{cmd.Run()}
 		}
 	case 1:
-		m.mode = "run"
-		m.confirm.SetValue("")
-		m.status = "Type " + confirmation(m.target) + " to run · PgUp/PgDown review · Esc cancel"
-		m.layout()
-		cmd := m.confirm.Focus()
-		return m, cmd
+		return m.beginConfirmation()
 	case 2:
 		m.beginEdit()
 		return m, textinput.Blink
+	case 3:
+		m.beginMove()
+		return m, nil
+	case 4:
+		m.mode = "delete"
+		m.status = "Enter / y delete · Esc / n cancel · u restores after deletion"
 	}
 	m.layout()
 	return m, nil
@@ -520,7 +616,7 @@ func (m Model) activate(a int) (tea.Model, tea.Cmd) {
 func (m *Model) beginEdit() {
 	m.mode = "edit"
 	m.field = 0
-	values := []string{m.target.Name, m.target.Description, m.target.Command, strings.Join(m.target.Tags, ", "), m.target.Host, m.target.Risk, m.target.Prerequisite, m.target.Explanation}
+	values := []string{m.target.Name, m.target.Description, m.target.Command, strings.Join(m.target.Tags, ", "), m.target.Host, m.target.Risk, m.target.Prerequisite, m.target.Explanation, m.target.Category}
 	m.fields = make([]textinput.Model, len(values))
 	for i, v := range values {
 		f := textinput.New()
@@ -563,6 +659,7 @@ func (m Model) updateEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		c.Risk = strings.ToUpper(strings.TrimSpace(m.fields[5].Value()))
 		c.Prerequisite = m.fields[6].Value()
 		c.Explanation = m.fields[7].Value()
+		c.Category = strings.TrimSpace(m.fields[8].Value())
 		c.UpdatedAt = time.Now().UTC()
 		if c.CreatedAt.IsZero() {
 			c.CreatedAt = c.UpdatedAt
@@ -591,6 +688,7 @@ func (m Model) updateEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.all = cs
 		m.mode = ""
+		m.action = 1
 		m.status = "Saved."
 		m.refresh()
 		return m, nil
@@ -627,11 +725,21 @@ func (m Model) View() string {
 		body = m.detail.View()
 		if m.mode == "" && m.width >= 76 {
 			lw := max(24, m.width/3)
-			lines := []string{accent.Render(fmt.Sprintf("Results (%d)", len(m.results))), ""}
+			lines := []string{accent.Render(fmt.Sprintf("Commands (%d)", len(m.results))), ""}
 			count := max(1, m.detail.Height-2)
 			start := max(0, m.selected-count+1)
-			for i := start; i < min(len(m.results), start+count); i++ {
-				name := safe(m.results[i].Name)
+			for i := start; i < min(len(m.rows), start+count); i++ {
+				row := m.rows[i]
+				name := safe(row.command.Name)
+				if row.category != "" {
+					marker := "▸"
+					if m.expanded[row.category] {
+						marker = "▾"
+					}
+					name = fmt.Sprintf("%s %s (%d)", marker, safe(row.category), row.count)
+				} else if row.command.Category != "" && strings.TrimSpace(m.search.Value()) == "" {
+					name = "  " + name
+				}
 				style := lipgloss.NewStyle().MaxWidth(lw - 2)
 				if i == m.selected {
 					lines = append(lines, accent.Render("› ")+style.Bold(true).Render(name))
@@ -644,7 +752,7 @@ func (m Model) View() string {
 		}
 	}
 	actionLine := ""
-	for i, a := range actions {
+	for i, a := range append(append([]string(nil), actions...), organizationActions...) {
 		label := "[" + a + "]"
 		if i == m.action {
 			label = accent.Render(label)
@@ -655,6 +763,9 @@ func (m Model) View() string {
 	}
 	if m.mode == "run" {
 		actionLine = m.confirm.View()
+		if quickConfirmation(m.target) {
+			actionLine = "[ Enter / Space / y / 1: START ]   [ Esc / n / 0 / Backspace / Del: CANCEL ]"
+		}
 	}
 	if m.mode == "help" {
 		actionLine = "←/→ tutorial step · ? explain · c Copy · r Run"
@@ -668,7 +779,24 @@ func (m Model) View() string {
 	if m.mode == "copy" {
 		actionLine = "Esc back · PgUp/PgDown scroll"
 	}
-	footer := muted.Render("↑↓ result  ←→ action  Enter select  / search  ? explain  h help")
+	if m.mode == "move" {
+		actionLine = "↑↓ position · Tab category · Enter save · Esc cancel"
+		if m.moveCategory.Focused() {
+			actionLine = "Type category · Tab position · Enter save · Esc cancel"
+		}
+	}
+	if m.mode == "rename-category" {
+		actionLine = "[ Enter: Speichern ]   [ Esc: Abbrechen ]"
+	}
+	if m.mode == "delete" {
+		actionLine = "[ Enter / y: DELETE ]   [ Esc / n: CANCEL ]"
+	}
+	if m.mode == "" {
+		if row, ok := m.selectedRow(); ok && row.category != "" {
+			actionLine = "[ Enter: Auf-/zuklappen ]   [ e: Umbenennen ]"
+		}
+	}
+	footer := muted.Render("↑↓ select · Enter Run · / search · m move · d delete · u undo · p check · a AI")
 	content := header + "\n" + m.search.View() + "\n" + strings.Repeat("─", w) + "\n" + body + "\n" + actionLine + "\n" + lipgloss.NewStyle().MaxWidth(w).Render(safe(m.status)) + "\n" + footer
 	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("238")).Padding(0, 1).Width(w + 2).MaxWidth(m.width).MaxHeight(m.height).Render(content)
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/dompy/cmdlib/internal/library"
 )
@@ -71,6 +73,52 @@ func validate(cs []library.Command) error {
 
 func (s JSON) Save(ctx context.Context, cs []library.Command) error {
 	return s.write(ctx, cs, true)
+}
+
+// Backup preserves the exact private library before an organization change.
+// It never exports the data or rewrites the source library.
+func (s JSON) Backup(ctx context.Context, reason string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	b, err := os.ReadFile(s.Path)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	reason = strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' {
+			return r
+		}
+		return '-'
+	}, strings.ToLower(reason))
+	if len(reason) > 40 {
+		reason = reason[:40]
+	}
+	dir := filepath.Join(filepath.Dir(s.Path), "backups")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, filepath.Base(s.Path)+"."+time.Now().UTC().Format("20060102T150405.000000000Z")+"."+reason+".bak")
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return "", err
+	}
+	_, writeErr := f.Write(b)
+	if writeErr == nil {
+		writeErr = f.Sync()
+	}
+	closeErr := f.Close()
+	if writeErr != nil || closeErr != nil {
+		os.Remove(path)
+		if writeErr != nil {
+			return "", writeErr
+		}
+		return "", closeErr
+	}
+	return path, nil
 }
 
 func (s JSON) write(ctx context.Context, cs []library.Command, replace bool) error {

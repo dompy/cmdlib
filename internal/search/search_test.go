@@ -28,3 +28,10 @@ func TestFuzzyUnicode(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestCategorySearch(t *testing.T) {
+	cs := []library.Command{{ID: "one", Name: "Record audio", Category: "FFmpeg"}, {ID: "two", Name: "Other"}}
+	if got := Filter(cs, "ffmpeg audio"); len(got) != 1 || got[0].ID != "one" {
+		t.Fatal("category did not participate in multiword search", got)
+	}
+}

@@ -4,6 +4,11 @@ A small, offline terminal command library for commands you use too rarely to rem
 Find a command, read its explanation, copy its exact text, or deliberately run it.
 Built with Go, Bubble Tea, Bubbles, and Lip Gloss. [ai-mate.ai](https://ai-mate.ai) is the project attribution.
 
+This personal UX build adds default Run, collapsible and renameable categories, move/delete/undo,
+an owner-operated FFmpeg toolkit, idle-only background checks and a deliberately
+queued Codex advisor. See [current controls](CMDLIB_BEDIENUNG.md) and
+[native verification and installation state](CMDLIB_PRUEFERGEBNIS.md).
+
 ## Install
 
 Download the matching archive and `checksums.txt` from [Releases](https://github.com/dompy/cmdlib/releases).
@@ -44,10 +49,16 @@ The selected command and details stay visible in the wide terminal layout.
 | `/` | Focus search; normal typing and pasted text work |
 | `↑` / `↓` | Select a result |
 | `←` / `→` | Select Copy / Run / Edit |
-| `Enter` | Activate the selected action |
+| `Enter` | Activate the selected action; Run is selected by default on command navigation, category headers expand/collapse |
 | `?` | Toggle the selected command's contextual explanation |
 | `PgUp` / `PgDown` | Scroll details |
 | `n` | Add a command |
+| `m` / Alt+↑ / Alt+↓ | Move a command; the dialog also edits its category |
+| `d` / Delete | Review and confirm deletion |
+| `e` / F2 on a category | Rename the whole category; Enter saves, Esc cancels |
+| `u` | Undo the last move/delete/category rename in this session; private backups survive restart |
+| `p` | Local checks and stored background/AI results |
+| `a` | Queue one Codex metadata-only check for after cmdlib closes |
 | `h` | Guided tutorial, one visible command per step |
 | `Esc` | Leave search, clear search, or cancel the active view |
 | `q` / `Ctrl+C` | Quit (`q` is normal text while searching) |
@@ -57,8 +68,24 @@ Changing command text clears an unchanged explanation so stale documentation doe
 Tutorial controls are ←/→ for steps, `?` for contextual explanation, `c` Copy, and `r` Run.
 
 Selection and copying never execute a command. Run shows the actual local execution machine and
-exact command before confirmation. Type `yes` for READ / CONNECT, `WRITE` for WRITE,
-or `RUN <id>` for DANGER. Esc cancels. Commands run locally through `/bin/sh` with your permissions
+exact command before confirmation. For READ / CONNECT, press Enter, Space, `y` or `1`
+to start; Esc, `n`, `0`, Backspace or Delete cancels. A pasted approval is ignored.
+WRITE still requires `WRITE` and DANGER requires `RUN <id>` followed by Enter.
+Neither category permits shortcut approval or automatic execution.
+
+Optional local countdowns require a separate `<library-path>.run-policy.json` file.
+With version 1, delay_ms 2500 and a matching approved_fingerprints entry, consciously
+selecting Run opens a visible 2.5-second countdown for that exact READ / CONNECT entry.
+Merely selecting, searching or copying never arms it. Changes to the command, ID,
+risk, host or prerequisite invalidate that approval. New commands have no countdown.
+Focus loss (where reported by the terminal), window resizing, review keys, pasted
+text or a delayed event loop pause the countdown; explicit confirmation remains
+available. A command too large to review on screen does not count down.
+This user-maintained opt-in is not a guarantee that a command or referenced script
+is safe; code reached by a command can change independently of its text.
+See `docs/quick-confirmation.md` for policy format and local rollback.
+
+Esc cancels. Commands run locally through `/bin/sh` with your permissions
 and current working directory. The explicit command may itself open a remote connection;
 a Host label does not route execution. READ and other labels are authored metadata, not safety checks.
 Confirmed run attempts are recorded before execution; the count includes failed attempts.
@@ -77,8 +104,9 @@ Your library is a local JSON array. Default locations:
 
 Five harmless examples are created only when the file is absent. Existing libraries, including empty
 ones, are preserved. Writes use a private temporary file and atomic replacement. There is no account,
-telemetry, server synchronization, credential storage, or LLM API requirement. Remote sync and AI
-explanations are possible future work, not implemented features.
+telemetry, server synchronization, credential storage, or LLM API requirement. Remote sync remains
+future work. The optional advisor uses the owner's existing ChatGPT Codex CLI session;
+queued checks run only while cmdlib is closed and never modify commands or install updates.
 
 Back up the JSON file before editing or upgrading. For example on macOS:
 

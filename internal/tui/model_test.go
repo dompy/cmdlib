@@ -26,7 +26,8 @@ func (s *memory) Save(_ context.Context, cs []library.Command) error {
 }
 func key(m Model, k tea.KeyType) Model { next, _ := m.Update(tea.KeyMsg{Type: k}); return next.(Model) }
 func TestRunConfirmation(t *testing.T) {
-	for _, risk := range []string{"READ", "WRITE", "DANGER", "CONNECT"} {
+	// WRITE and DANGER retain typed, explicit confirmation.
+	for _, risk := range []string{"WRITE", "DANGER"} {
 		cs := library.Seeds()
 		cs[0].Risk = risk
 		s := &memory{cs: cs}
