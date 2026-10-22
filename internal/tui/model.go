@@ -44,6 +44,7 @@ var organizationActions = []string{"Move", "Delete"}
 var labels = []string{"Name", "Description", "Command", "Tags", "Host", "Risk", "Prerequisite", "Explanation", "Category"}
 
 type Model struct {
+	mobile                                       bool
 	store                                        storage.Store
 	all, results                                 []library.Command
 	path, host, status, mode, returnMode         string
@@ -79,6 +80,7 @@ func New(s storage.Store, cs []library.Command, path string) Model {
 	confirm.CharLimit = 256
 	host, _ := os.Hostname()
 	m := Model{store: s, all: append([]library.Command(nil), cs...), results: search.Filter(cs, ""), path: path, host: host, search: input, confirm: confirm, action: 1, expanded: map[string]bool{}, width: 90, height: 30, detail: viewport.New(50, 18), detailField: 2}
+	m.mobile = os.Getenv("CMDLIB_MOBILE") == "1"
 	m.loadViewState()
 	m.refresh()
 	return m
@@ -111,6 +113,10 @@ func (m *Model) refresh() {
 	m.layout()
 }
 func (m *Model) layout() {
+	if m.mobile {
+		m.mobileLayout()
+		return
+	}
 	w := max(10, m.width-4)
 	reserved := 2
 	if m.search.Focused() || m.search.Value() != "" {
@@ -343,6 +349,11 @@ func confirmation(c library.Command) string {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.mobile {
+		if next, cmd, handled := m.updateMobile(msg); handled {
+			return next, cmd
+		}
+	}
 	switch msg := msg.(type) {
 	case confirmationTick:
 		return m.confirmTick(msg)

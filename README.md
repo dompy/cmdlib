@@ -38,6 +38,8 @@ go build -trimpath -o cmdlib .
 ./cmdlib
 ```
 
+For local use on iPhone in iSH, see [iSH installation and mobile controls](docs/ish.md).
+
 ## Use
 
 The selected command is prominent; other results are muted. Description and metadata

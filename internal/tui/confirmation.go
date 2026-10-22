@@ -201,5 +201,8 @@ cmdlib_status=$?
 printf '\n[cmdlib] Exit status: %s. Press Enter to return. ' "$cmdlib_status"
 read -r cmdlib_reply
 exit "$cmdlib_status"`, "cmdlib-run", m.target.Command)
+	if m.mobile && m.target.Risk == "CONNECT" {
+		cmd = exec.Command("/bin/sh", "-c", m.target.Command)
+	}
 	return m, tea.ExecProcess(cmd, func(err error) tea.Msg { return executed{err} })
 }

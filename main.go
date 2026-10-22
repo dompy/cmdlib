@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,6 +19,10 @@ var version = "dev"
 var commit = "unknown"
 
 func run(args []string) error {
+	// The iSH installer checks spawning AND waiting before replacing a working build.
+	if len(args) == 1 && args[0] == "--ish-check" {
+		return exec.Command("/bin/sh", "-c", "exit 0").Run()
+	}
 	if len(args) == 1 && args[0] == "--version" {
 		fmt.Printf("cmdlib %s (%s; %s/%s) — by ai-mate.ai\n", version, commit, runtime.GOOS, runtime.GOARCH)
 		return nil
