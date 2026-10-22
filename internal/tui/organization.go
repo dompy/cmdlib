@@ -32,7 +32,7 @@ func (m Model) selectedRow() (libraryRow, bool) {
 
 func (m *Model) rebuildRows() {
 	m.rows = nil
-	if strings.TrimSpace(m.search.Value()) != "" {
+	if m.mobile || strings.TrimSpace(m.search.Value()) != "" {
 		for _, c := range m.results {
 			m.rows = append(m.rows, libraryRow{command: c})
 		}

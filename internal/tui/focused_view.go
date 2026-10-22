@@ -151,6 +151,9 @@ func (m Model) controls() string {
 }
 
 func (m Model) View() string {
+	if m.mobile {
+		return m.mobileView()
+	}
 	if m.width < 36 || m.height < 14 {
 		return "cmdlib\nTerminal too small: resize to at least 36×14.\nCtrl+C quits."
 	}
